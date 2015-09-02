@@ -1,0 +1,33 @@
+---
+rvm_root: '/usr/local/rvm'
+# 2.2.2 isnt out yet?
+ruby_version: ruby-2.2.1
+
+aws_bucket: todo
+aws_access_key_id: todo
+aws_secret_access_key: todo
+
+postgres_version: 9.3
+postgres_db_password: password
+
+smtp_address: todo
+smtp_port: todo
+smtp_username: todo
+smtp_password: todo
+smtp_authentication: todo
+
+facebook_app_id: todo
+facebook_app_secret: todo
+
+
+secret_token: random
+secret_key_base: random
+
+server_name: calendarbin.com
+user_name: calendarbin
+calendarbin_user_password: password
+calendarbin_path: /var/calendarbin
+calendarbin_repo: git@bitbucket.org:murny/calendarbin.git
+
+basic_auth: calendarbin
+basic_auth_password: KWHuUq8mN599c

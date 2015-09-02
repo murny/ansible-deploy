@@ -1,0 +1,49 @@
+- name: set timezone to UTC
+  lineinfile: dest=/etc/timezone state=present insertbefore=BOF
+              regexp="^Etc/UTC" line="Etc/UTC"
+  register: timezone
+
+- name: reconfigure tzdata
+  shell: dpkg-reconfigure -f noninteractive tzdata
+  when: timezone.changed
+
+- name: copy over env variables
+  template: dest=/etc/profile.d/env.sh src=env.sh.j2 owner=root group=root mode=0755
+
+- name: add postgres apt signing key
+  apt_key: url=https://www.postgresql.org/media/keys/ACCC4CF8.asc state=present
+
+- name: copy postgres repo source file
+  template: src=pgdg.list dest=/etc/apt/sources.list.d/pgdg.list
+
+- name: install packages
+  apt: pkg={{item}} state=present update_cache=yes
+  with_items:
+  - build-essential
+  - curl
+  - git
+  - imagemagick
+  - libcurl4-openssl-dev
+  - libpq-dev
+  - libpq5
+  - libreadline-dev
+  - libssl-dev
+  - libtool
+  - libxml2-dev
+  - libxml2-utils
+  - libxslt1-dev
+  - libyaml-dev
+  - monit
+  - ntp
+  - python-software-properties
+  - vim
+  - zlib1g-dev
+
+- name: copy monitrc
+  copy: src=monitrc dest=/etc/monit/monitrc
+
+- name: create application user account
+  user: name={{user_name}} password={{calendarbin_user_password}} shell=/bin/bash
+
+- include: iptables.yml
+- include: rvm.yml

@@ -1,0 +1,4 @@
+check process sidekiq with pidfile {{calendarbin_path}}/tmp/pids/sidekiq.pid
+  group calendarbin
+  start program = "/bin/su - calendarbin -c 'cd {{calendarbin_path}} && bundle exec sidekiq -e production -C {{calendarbin_path}}/config/sidekiq.yml'"
+  stop program = "/bin/su - calendarbin -c 'kill `cat {{calendarbin_path}}/tmp/pids/sidekiq.pid`'"

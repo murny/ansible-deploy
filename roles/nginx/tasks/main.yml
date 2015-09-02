@@ -1,0 +1,29 @@
+- name: add nginx repo
+  apt_repository: repo=ppa:nginx/stable state=present
+  register: add_nginx_ppa
+
+- name: update package cache
+  apt: update_cache=yes
+  when: add_nginx_ppa.changed
+
+- name: install nginx
+  apt: pkg=nginx state=latest
+
+- name: Remove nginx default site
+  action: file path=/etc/nginx/sites-enabled/default state=absent
+
+- name: copy nginx config
+  copy: src=nginx.conf dest=/etc/nginx/nginx.conf
+  notify:
+  - reload nginx
+
+- name: setup basic_auth
+  template: src=.htpasswd dest=/etc/nginx/.htpasswd
+  when: "'{{ basic_auth }}'"
+  notify:
+  - reload nginx
+
+- name: copy nginx app config
+  template: src=app.nginx.conf dest=/etc/nginx/sites-enabled/app
+  notify:
+  - reload nginx

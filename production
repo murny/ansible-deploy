@@ -1,0 +1,14 @@
+[app]
+calendarbin.com unicorn_workers=4
+
+[sidekiq]
+calendarbin.com
+
+[nginx]
+calendarbin.com
+
+[postgres]
+calendarbin.com
+
+[redis]
+calendarbin.com

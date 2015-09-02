@@ -1,0 +1,45 @@
+---
+- hosts: all
+  roles:
+  - common
+  handlers:
+  - name: reload monit
+    service: name=monit state=reloaded
+
+- hosts: postgres
+  roles:
+  - postgres
+
+- hosts: postgres
+  sudo: True
+  sudo_user: postgres
+  tasks:
+  - include: roles/postgres/tasks/setup_db.yml
+
+- hosts: redis
+  roles:
+  - redis
+
+- hosts: nginx
+  roles:
+  - nginx
+  handlers:
+  - name: reload nginx
+    service: name=nginx state=reloaded
+
+- hosts:
+  - app
+  - sidekiq
+  roles:
+  - calendarbin
+  handlers:
+  - name: reload monit
+    service: name=monit state=reloaded
+  - name: start unicorn
+    monit: name=unicorn state=started
+  - name: start sidekiq
+    monit: name=sidekiq state=started
+  - name: restart unicorn
+    monit: name=unicorn state=restarted
+  - name: restart sidekiq
+    monit: name=sidekiq state=restarted
