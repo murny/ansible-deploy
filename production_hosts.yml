@@ -1,0 +1,6 @@
+all:
+  hosts:
+    167.99.150.63:
+      # Ubuntu 16.04 comes with Python3 by default, which is supported as of Ansible 2.2
+      ansible_python_interpreter: /usr/bin/python3
+      anisble_host: 167.99.150.63
