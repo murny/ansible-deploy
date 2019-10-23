@@ -1,14 +1,13 @@
----
-- name: add PPA
-  apt_repository: repo=ppa:rwky/redis state=present
-  register: add_redis_ppa
+- name: 'Install Redis'
+  become: true
+  apt:
+    name: 'redis-server'
+    state: latest
+    update_cache: true
 
-- name: update apt cache
-  apt: update_cache=yes
-  when: add_redis_ppa.changed
-
-- name: install redis-server
-  apt: pkg=redis-server state=present
-
-- name: start redis-server
-  service: name=redis-server state=started
+- name: 'Ensure Redis Server is running'
+  become: true
+  service:
+    name: redis-server
+    state: started
+    enabled: yes

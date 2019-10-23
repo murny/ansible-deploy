@@ -1,0 +1,69 @@
+- name: Install dependencies
+  become: true
+  apt:
+    name:
+      - 'git-core'
+      - 'htop'
+      - 'curl'
+      - 'zlib1g-dev'
+      - 'build-essential'
+      - 'libssl-dev'
+      - 'libreadline-dev'
+      - 'libyaml-dev'
+      - 'libsqlite3-dev'
+      - 'sqlite3'
+      - 'libxml2-dev'
+      - 'libxslt1-dev'
+      - 'libcurl4-openssl-dev'
+      - 'python-software-properties'
+      - 'libffi-dev'
+      - 'imagemagick'
+    state: latest
+    update_cache: true
+
+- name: Add rbenv repository
+  become: true
+  git:
+    repo: https://github.com/rbenv/rbenv.git
+    dest: "{{ rbenv_root }}"
+
+- name: Add ruby-build repository
+  become: true
+  git:
+    repo: https://github.com/rbenv/ruby-build.git
+    dest: "{{ ruby_build_root }}"
+
+- name: Add rbenv PATH and init to deploy user .bashrc
+  become: true
+  blockinfile:
+    path: "{{ deploy_dir }}.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      export PATH="{{ rbenv_root }}/bin:$PATH"
+      eval "$(rbenv init -)"
+      export PATH="{{ ruby_build_root }}/bin:$PATH"
+
+- name: "Install Ruby {{ ruby_version }}"
+  become: true
+  command: "rbenv install {{ ruby_version }}"
+  args:
+    creates: '{{ rbenv_root }}/versions/{{ ruby_version }}/bin/ruby'
+  environment:
+    RBENV_ROOT: '{{ rbenv_root }}'
+    PATH: '{{ rbenv_root }}/bin:{{ rbenv_root }}/shims:{{ ruby_build_root }}/bin:{{ ansible_env.PATH }}'
+
+- name: 'Set Ruby {{ ruby_version }} as global default'
+  become: true
+  command: "rbenv global {{ ruby_version }}"
+  environment:
+    RBENV_ROOT: '{{ rbenv_root }}'
+    PATH: '{{ rbenv_root }}/bin:{{ rbenv_root }}/shims:{{ ruby_build_root }}/bin:{{ ansible_env.PATH }}'
+  changed_when: false
+
+- name: 'Install bundler'
+  become: true
+  command: gem install bundler
+  environment:
+    RBENV_ROOT: '{{ rbenv_root }}'
+    PATH: '{{ rbenv_root }}/bin:{{ rbenv_root }}/shims:{{ ruby_build_root }}/bin:{{ ansible_env.PATH }}'
+  changed_when: false

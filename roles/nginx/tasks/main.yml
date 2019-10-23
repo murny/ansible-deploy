@@ -1,29 +1,40 @@
-- name: add nginx repo
-  apt_repository: repo=ppa:nginx/stable state=present
-  register: add_nginx_ppa
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: latest
 
-- name: update package cache
-  apt: update_cache=yes
-  when: add_nginx_ppa.changed
+- name: Check for dhparam.pem
+  stat: path=/etc/nginx/dhparam.pem
+  register: dhparam
 
-- name: install nginx
-  apt: pkg=nginx state=latest
+- name: Generate dhparam
+  command: openssl dhparam -out /etc/nginx/dhparam.pem 2048
+  when: dhparam.stat.exists == false
 
-- name: Remove nginx default site
-  action: file path=/etc/nginx/sites-enabled/default state=absent
+- name: Copy nginx configuration
+  template:
+    src: nginx_app_config
+    dest: "/etc/nginx/sites-available/{{ app_name }}"
+    owner: root
+    group: root
 
-- name: copy nginx config
-  copy: src=nginx.conf dest=/etc/nginx/nginx.conf
-  notify:
-  - reload nginx
+- name: Disable default config
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
 
-- name: setup basic_auth
-  template: src=.htpasswd dest=/etc/nginx/.htpasswd
-  when: "'{{ basic_auth }}'"
-  notify:
-  - reload nginx
+- name: Symlink to sites-enabled
+  file:
+    src: "/etc/nginx/sites-available/{{ app_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ app_name }}"
+    owner: root
+    group: root
+    state: link
 
-- name: copy nginx app config
-  template: src=app.nginx.conf dest=/etc/nginx/sites-enabled/app
-  notify:
-  - reload nginx
+- name: Copy htpasswd
+  template:
+    src: htpasswd
+    dest: /etc/nginx/.htpasswd
+    owner: root
+    group: root

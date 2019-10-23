@@ -1,4 +1,0 @@
-check process unicorn with pidfile {{calendarbin_path}}/tmp/pids/unicorn.pid
-  group calendarbin
-  start program = "/bin/su - calendarbin -c 'cd {{calendarbin_path}} && bundle exec unicorn -c {{calendarbin_path}}/config/unicorn.conf.rb'"
-  stop program = "/bin/su - calendarbin -c 'kill `cat {{calendarbin_path}}/tmp/pids/unicorn.pid`'"

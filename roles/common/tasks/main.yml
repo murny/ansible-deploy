@@ -1,49 +1,95 @@
-- name: set timezone to UTC
-  lineinfile: dest=/etc/timezone state=present insertbefore=BOF
-              regexp="^Etc/UTC" line="Etc/UTC"
-  register: timezone
+- name: Update all packages to the latest version
+  apt:
+    upgrade: dist
 
-- name: reconfigure tzdata
-  shell: dpkg-reconfigure -f noninteractive tzdata
-  when: timezone.changed
+- name: set hostname
+  hostname: name={{ app_domain }}
 
-- name: copy over env variables
-  template: dest=/etc/profile.d/env.sh src=env.sh.j2 owner=root group=root mode=0755
+- name: Create swap file
+  command: dd if=/dev/zero of={{ swap_file_path }} bs=1024 count={{ swap_file_size_kb }}k creates={{ swap_file_path }}
 
-- name: add postgres apt signing key
-  apt_key: url=https://www.postgresql.org/media/keys/ACCC4CF8.asc state=present
+- name: Change swap file permissions
+  file:
+    path: "{{ swap_file_path }}"
+    owner: root
+    group: root
+    mode: 0600
 
-- name: copy postgres repo source file
-  template: src=pgdg.list dest=/etc/apt/sources.list.d/pgdg.list
+- name: Check swap file type
+  command: file {{ swap_file_path }}
+  register: swapfile
 
-- name: install packages
-  apt: pkg={{item}} state=present update_cache=yes
+- name: Make swap file
+  command: mkswap {{ swap_file_path }}
+  when: swapfile.stdout.find('swap file') == -1
+
+- name: Write swap entry in fstab
+  mount:
+    name: none
+    src: "{{ swap_file_path }}"
+    fstype: swap
+    opts: sw
+    passno: 0
+    dump: 0
+    state: present
+
+- name: Mount swap
+  command: swapon {{ swap_file_path }}
+  when: ansible_swaptotal_mb < 1
+
+- name: Set swapiness in /proc/sys/vm/swappiness
+  shell: echo 10 | tee /proc/sys/vm/swappiness
+
+- name: Set swapiness in /etc/sysctl.conf
+  shell: echo vm.swappiness = 10 | tee -a /etc/sysctl.conf
+
+- name: Install Tools
+  apt:
+    name:
+        - build-essential
+        - tmux
+        - vim
+        - htop
+        - git-core
+        - wget
+        - zlib1g-dev
+        - libssl-dev
+        - libreadline-dev
+        - libyaml-dev
+        - libxml2-dev
+        - libxslt1-dev
+        - libffi-dev
+        - curl
+        - libcurl3
+        - libcurl3-gnutls
+        - libcurl4-openssl-dev
+        - nodejs
+    state: latest
+    update_cache: true
+
+- name: set locale to {{locale}}
+  command: /usr/sbin/update-locale LANG={{locale}} LC_ALL={{locale}}
+
+- name: Install ufw
+  apt:
+    name: "ufw"
+
+- name: Setup open ports
+  ufw: rule=allow port={{ item }}
+  tags: firewall
   with_items:
-  - build-essential
-  - curl
-  - git
-  - imagemagick
-  - libcurl4-openssl-dev
-  - libpq-dev
-  - libpq5
-  - libreadline-dev
-  - libssl-dev
-  - libtool
-  - libxml2-dev
-  - libxml2-utils
-  - libxslt1-dev
-  - libyaml-dev
-  - monit
-  - ntp
-  - python-software-properties
-  - vim
-  - zlib1g-dev
+    - 22
+    - 80
+    - 443
 
-- name: copy monitrc
-  copy: src=monitrc dest=/etc/monit/monitrc
+- name: Set default policy to deny and start firewall
+  tags: firewall
+  ufw:
+    policy: "deny"
+    state: "enabled"
 
-- name: create application user account
-  user: name={{user_name}} password={{calendarbin_user_password}} shell=/bin/bash
+- name: Automated security updates
+  apt: name=unattended-upgrades state=present
 
-- include: iptables.yml
-- include: rvm.yml
+- name: Fail2ban
+  apt: name=fail2ban state=present

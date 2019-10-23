@@ -1,0 +1,31 @@
+- name: 'Install CertBot prerequisites'
+  become: true
+  apt:
+    name: 'software-properties-common'
+    state: latest
+    update_cache: true
+
+- name: 'Add LetsEncrypt CertBot repository'
+  become: true
+  apt_repository:
+    repo: 'ppa:certbot/certbot'
+    state: present
+
+- name: 'Install LetsEncrypt CertBot'
+  become: true
+  apt:
+    name: 'python-certbot-nginx'
+    state: latest
+    update_cache: true
+
+- name: 'Run CertBot'
+  become: true
+  command: "certbot --nginx --agree-tos -m {{ maintainer_email }} -d {{ app_domain }} -n"
+  changed_when: false
+
+- name: 'Restart Nginx'
+  become: true
+  service:
+    name: nginx
+    state: restarted
+  changed_when: false
