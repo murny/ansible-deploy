@@ -1,0 +1,35 @@
+- name: Import secret variables
+  include_vars: "secrets.yml"
+  no_log: true
+
+- name: Create deploy dir
+  become: true
+  file:
+    path: "{{ deploy_dir }}{{ app_name }}"
+    state: directory
+    owner: "deploy"
+    group: "deploy"
+
+# We get the master_key from vars/secrets.yml
+- name: 'Add master key file'
+  become: true
+  become_user: deploy
+  lineinfile:
+    create: true
+    state: present
+    path: "{{ deploy_dir }}{{ app_name }}/shared/config/master.key"
+    line: "{{ master_key }}"
+
+- name: Copy puma.rb
+  become: true
+  template:
+    src: puma.rb
+    dest: "{{ deploy_dir }}{{ app_name }}/shared/puma.rb"
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes

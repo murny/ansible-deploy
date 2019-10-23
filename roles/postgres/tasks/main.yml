@@ -1,13 +1,71 @@
-- name: install postgres
-  apt: pkg={{item}} state=present
-  with_items:
-  - pgdg-keyring
-  - postgresql-{{postgres_version}}
-  - postgresql-contrib-{{postgres_version}}
-  - python-psycopg2
+- name: Import secret variables
+  include_vars: "secrets.yml"
+  no_log: true
 
-- name: copy pg_hba.conf
-  copy: src=pg_hba.conf dest=/etc/postgresql/{{postgres_version}}/main/pg_hba.conf
+- name: Add PostgreSQL key
+  become: true
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
 
-- name: copy postgresql.conf
-  template: src=postgresql.conf dest=/etc/postgresql/{{postgres_version}}/main/postgresql.conf
+- name: Add PostgreSQL repository
+  become: true
+  apt_repository:
+    repo: deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main
+    state: present
+
+- name: Install PostgreSQL
+  become: true
+  apt:
+    name:
+      - 'postgresql-10'
+      - 'libpq-dev'
+      - 'python-psycopg2'
+      - 'python3-pip'
+    state: latest
+    update_cache: true
+
+- name: Install PsycoPG2
+  become: true
+  become_user: postgres
+  pip:
+    name: psycopg2-binary
+    state: latest
+  changed_when: false
+
+# We get the production_database_password from vars/secrets.yml
+- name: 'Create deploy user for apps'
+  become_user: postgres
+  become: true
+  postgresql_user:
+    name: deploy
+    password: "{{ production_database_password }}"
+    encrypted: yes
+
+- name: 'Create root user for backups'
+  become_user: postgres
+  become: true
+  postgresql_user:
+    name: root
+    role_attr_flags: SUPERUSER
+
+- name: 'Create application database'
+  become_user: postgres
+  become: true
+  postgresql_db:
+    name: "{{ app_name }}_production"
+    owner: deploy
+
+- name: 'Set up Postgres backups directory'
+  become: true
+  file:
+    path: /var/backups/postgres
+    state: directory
+
+- name: 'Set up Postgres recurring backup creation'
+  become: true
+  cron:
+    name: "postgres backup creation"
+    special_time: daily
+    state: present
+    job: "/usr/bin/pg_dump --compress=9 {{ app_name }}_production > /var/backups/postgres/{{ app_name }}_production.pgdump.gz"
